@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AppRoute, HotelData } from './types';
@@ -8,6 +7,14 @@ import { RAW_ITINERARY, CITIES, HOTELS } from './constants';
 declare const L: any;
 
 // --- Components ---
+
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
 
 const BottomNav: React.FC = () => {
   const location = useLocation();
@@ -99,7 +106,7 @@ const ScreenMap: React.FC = () => {
       leafletInstance.current = L.map(mapRef.current, {
         zoomControl: false,
         attributionControl: false
-      }).setView([35.2, 137.5], 7); // Adjusted view to see more of the route
+      }).setView([35.2, 137.5], 7); 
 
       const isDarkMode = document.documentElement.classList.contains('dark');
       const tileUrl = isDarkMode 
@@ -107,7 +114,6 @@ const ScreenMap: React.FC = () => {
         : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
       L.tileLayer(tileUrl).addTo(leafletInstance.current);
-      // L.control.zoom({ position: 'bottomright' }).addTo(leafletInstance.current);
 
       CITIES.forEach(city => {
         const markerIcon = L.divIcon({
@@ -140,14 +146,13 @@ const ScreenMap: React.FC = () => {
         });
       });
 
-      // Simple ordering for polyline based on logic not array index: Tokyo -> Kamakura -> Kyoto -> Nara -> Osaka -> Tokyo
       const routeCoordinates = [
          CITIES.find(c => c.name === 'Tokyo')!.coordinates,
          CITIES.find(c => c.name === 'Kamakura')!.coordinates,
-         CITIES.find(c => c.name === 'Tokyo')!.coordinates, // Return from day trip
+         CITIES.find(c => c.name === 'Tokyo')!.coordinates, 
          CITIES.find(c => c.name === 'Kioto')!.coordinates,
          CITIES.find(c => c.name === 'Nara')!.coordinates,
-         CITIES.find(c => c.name === 'Kioto')!.coordinates, // Return from day trip
+         CITIES.find(c => c.name === 'Kioto')!.coordinates,
          CITIES.find(c => c.name === 'Osaka')!.coordinates,
          CITIES.find(c => c.name === 'Tokyo')!.coordinates
       ];
@@ -191,6 +196,32 @@ const ScreenMap: React.FC = () => {
 
 const ScreenSummary: React.FC = () => {
   const nextActivity = RAW_ITINERARY[0];
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    // Fecha del primer vuelo: 10/04/2026 09:55
+    const targetDate = new Date('2026-04-10T09:55:00').getTime();
+
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const distance = targetDate - now;
+
+      if (distance < 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      } else {
+        setTimeLeft({
+          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((distance % (1000 * 60)) / 1000)
+        });
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="h-full overflow-y-auto pb-24 max-w-md mx-auto bg-background-light dark:bg-background-dark no-scrollbar">
@@ -231,10 +262,15 @@ const ScreenSummary: React.FC = () => {
             <div className="w-full">
               <p className="text-white/80 text-xs font-semibold uppercase tracking-widest mb-3">Tu Viaje Empieza en</p>
               <div className="grid grid-cols-4 gap-2">
-                {['45', '12', '08', '30'].map((val, i) => (
+                {[
+                  { val: timeLeft.days, label: 'Días' },
+                  { val: timeLeft.hours, label: 'Hrs' },
+                  { val: timeLeft.minutes, label: 'Min' },
+                  { val: timeLeft.seconds, label: 'Seg' }
+                ].map((item, i) => (
                   <div key={i} className="bg-white/10 backdrop-blur-md rounded-2xl p-2 border border-white/10 flex flex-col items-center shadow-sm">
-                    <span className="text-xl font-bold text-white">{val}</span>
-                    <span className="text-[9px] text-white/70 uppercase">{['Días', 'Hrs', 'Min', 'Seg'][i]}</span>
+                    <span className="text-xl font-bold text-white tabular-nums">{item.val.toString().padStart(2, '0')}</span>
+                    <span className="text-[9px] text-white/70 uppercase">{item.label}</span>
                   </div>
                 ))}
               </div>
@@ -328,7 +364,7 @@ const ScreenItinerary: React.FC = () => {
             <span className="text-[11px] font-bold text-primary uppercase tracking-widest">Abr 10 - Abr 21</span>
           </div>
           <div className="size-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden border-2 border-white dark:border-surface-dark shadow-sm">
-            <img src="https://picsum.photos/seed/japan/100" className="w-full h-full object-cover" />
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDN8ilJCS7v6RqLkdRehLaZl3KGooix3X7LBPLeZilTHANfR3TL7Lb9SjpZMLa7UdtUg8ZRNgfGHN1V4ESzcfFj-1D1q5fJ9v9k7vGgN5VBcHTYRE-D7xckk_-RFWfrTE_GIhdndLqG2vvUw8n0yaksMAWTplN2qBCOQb23u3orjR7tKpn-O4HEgSSSA9Us5gKnX9F4WbipiuqcIzoAggOmlYW20QYZhH6r40km8v2oOttOp1sIb-ChFimaacU6mG8YfClFz_TlK-I" className="w-full h-full object-cover" alt="Profile" />
           </div>
         </div>
       </header>
@@ -499,6 +535,7 @@ const ScreenBookings: React.FC = () => {
                 <div className="w-full h-px bg-white/30 relative">
                    <span className="material-symbols-outlined absolute left-1/2 -translate-x-1/2 -top-3 text-[24px]">flight</span>
                 </div>
+                <span className="text-[10px] font-bold text-white/70 mt-3">Qatar Airways</span>
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-bold text-white/70 uppercase">Llegada</p>
@@ -507,8 +544,8 @@ const ScreenBookings: React.FC = () => {
             </div>
             <div className="flex justify-between border-t border-white/20 pt-4 relative z-10">
                <div>
-                 <p className="text-[10px] font-bold text-white/70 uppercase">Estado</p>
-                 <p className="text-sm font-bold">A tiempo</p>
+                 <p className="text-[10px] font-bold text-white/70 uppercase">Vuelo</p>
+                 <p className="text-sm font-bold">QR806</p>
                </div>
                <div className="text-right">
                  <p className="text-[10px] font-bold text-white/70 uppercase">Terminal</p>
@@ -568,6 +605,7 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <div className="relative overflow-hidden h-screen w-full bg-background-light dark:bg-background-dark max-w-md mx-auto shadow-2xl">
+        <ScrollToTop />
         <div className="h-full w-full">
           <Routes>
             <Route path={AppRoute.HOME} element={<ScreenSummary />} />
