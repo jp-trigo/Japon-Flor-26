@@ -1,16 +1,23 @@
 
-const CACHE_NAME = 'japon-en-flor-v1';
+const CACHE_NAME = 'japon-en-flor-v2';
 
-// Estrategia: Cache First, falling back to network para assets estáticos
-// Network First para navegación.
+// Assets que queremos cachear inmediatamente
+const PRECACHE_ASSETS = [
+  './',
+  './index.html',
+  './manifest.json'
+];
 
 self.addEventListener('install', (event) => {
-  // El SW se instala inmediatamente
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(PRECACHE_ASSETS);
+    })
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  // Limpiar caches antiguos si los hubiera
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -26,24 +33,24 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Ignorar peticiones que no sean http/https (como chrome-extension)
+  // Ignorar peticiones que no sean http/https
   if (!event.request.url.startsWith('http')) return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Si está en caché, lo devolvemos
       if (cachedResponse) {
         return cachedResponse;
       }
 
-      // Si no, hacemos la petición a la red
       return fetch(event.request).then((networkResponse) => {
-        // Verificamos si la respuesta es válida
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+        // Permitimos respuestas opacas (type: 'opaque') para imágenes CDN (Unsplash, Google, Leaflet)
+        // y respuestas CORS (type: 'cors') siempre que el status sea 200.
+        // Si hay error real (4xx, 5xx), no cacheamos.
+        if (!networkResponse || (networkResponse.status !== 200 && networkResponse.type !== 'opaque')) {
           return networkResponse;
         }
 
-        // Clonamos la respuesta para guardarla en caché
+        // Clonamos la respuesta
         const responseToCache = networkResponse.clone();
 
         caches.open(CACHE_NAME).then((cache) => {
@@ -51,6 +58,9 @@ self.addEventListener('fetch', (event) => {
         });
 
         return networkResponse;
+      }).catch(() => {
+        // Fallback offline opcional para imágenes o navegación
+        // Si quisieras una imagen por defecto offline, iría aquí.
       });
     })
   );
